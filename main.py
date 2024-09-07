@@ -66,13 +66,25 @@ async def send_mass_email(email_data: EmailSchema, background_tasks: BackgroundT
 
 
 # Restablecimiento de contraseña. 
-@app.post("/send_password_reset/")
-async def send_mass_email(email_data: EmailSchema, background_tasks: BackgroundTasks):
+@app.post("/send_password_reset/", tags=["Email for students"])
+async def send_mass_email(email_data: EmailSchema, name:str, reset_link : str, background_tasks: BackgroundTasks):
     
+    email_content = f"""
+    <html>
+        <body>
+            <h2>Hello {name},</h2>
+            <p>We have received a request to reset the password for your account. If you did not make this request, you can safely ignore this email.</ p>
+            <p>To reset your password, simply click on the following link or copy and paste the URL into your browser:</p>
+            <p><a href="{reset_link}">{reset_link}</a></p>
+            <p>If you have any questions or need further assistance, please feel free to contact us.</p>
+            <p>Thank you,</p>
+        </body>
+    </html>
+"""
     message = MessageSchema(
         subject=email_data.subject,
         recipients=email_data.email,
-        body=email_data.content,
+        body=email_content,
         subtype="html"
     )
     
