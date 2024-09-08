@@ -1,15 +1,15 @@
 import os
-from fastapi import FastAPI, BackgroundTasks
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
-from dotenv import load_dotenv
-from middlewares.error_handler import ErrorHandler
-from users.router import user_router
-
+from fastapi import FastAPI
+from src.middlewares.error_handler import ErrorHandler
+from src.users.router import user_router
+import uvicorn
+import src.models
 app = FastAPI()
 app.title = "Emails aplication"
 
 
 app.add_middleware(ErrorHandler)
 app.include_router(user_router)
+
+if __name__ == "__main__":
+    uvicorn.run(app)

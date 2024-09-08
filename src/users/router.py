@@ -1,12 +1,10 @@
-import os
-from fastapi import FastAPI, BackgroundTasks
-from fastapi_mail import FastMail, MessageSchema, ConnectionConfig
-from pydantic import BaseModel, EmailStr
-from typing import Optional, List
-from middlewares.error_handler import ErrorHandler
-from fastapi import APIRouter
-from users.schemas import EmailSchema, conf
+from fastapi import BackgroundTasks
+from fastapi_mail import FastMail, MessageSchema
 
+from fastapi import APIRouter
+from src.users.schemas import EmailSchema
+from src.config.mail import conf
+from src.templates.register import template_password, template_register
 user_router = APIRouter()
 
 
@@ -24,7 +22,7 @@ async def send_email(email_data: EmailSchema, background_tasks: BackgroundTasks)
     return {"message": "Email sent successfully"}
 
 
-@user_router.post("/send_mass_email/")
+@user_router.post("/send_mass_email/", tags=["Email students"])
 async def send_mass_email(email_data: EmailSchema, background_tasks: BackgroundTasks):
 
     message = MessageSchema(
@@ -39,22 +37,12 @@ async def send_mass_email(email_data: EmailSchema, background_tasks: BackgroundT
     return {"message": "Emails sent successfully"}
 
 
-# Restablecimiento de contraseña.
-@user_router.post("/send_password_reset/", tags=["Email for students"])
+#  Password reset.
+@user_router.post("/send_password_reset/", tags=["Email students"])
 async def send_password_reset(email_data: EmailSchema, name: str, reset_link: str, background_tasks: BackgroundTasks):
 
-    email_content = f"""
-    <html>
-        <body>
-            <h2>Hello {name},</h2>
-            <p>We have received a request to reset the password for your account. If you did not make this request, you can safely ignore this email.</ p>
-            <p>To reset your password, simply click on the following link or copy and paste the URL into your browser:</p>
-            <p><a href="{reset_link}">{reset_link}</a></p>
-            <p>If you have any questions or need further assistance, please feel free to contact us.</p>
-            <p>Thank you,</p>
-        </body>
-    </html>
-"""
+    email_content = template_password(name, reset_link)
+
     message = MessageSchema(
         subject=email_data.subject,
         recipients=email_data.email,
@@ -66,24 +54,39 @@ async def send_password_reset(email_data: EmailSchema, name: str, reset_link: st
     background_tasks.add_task(fm.send_message, message)
     return {"message": "Emails sent successfully"}
 
-# Resgitro de un nuevo usuario.
+# Resgiter of a new user.
 
 
-@user_router.post("/send_registration_email/", tags=['Email for new students'])
-async def send_registration_email(email_data: EmailSchema, name: str, user: str, password: str, background_tasks: BackgroundTasks):
-    email_content = f"""
-<html>
-<body>
-    <h1>Welcome {name}!</h1>
-    <p>We are excited to have you on board. Your account has been successfully created. Below are your temporary login credentials:</p>
-    <p><strong>Username:</strong> {user}</p>
-    <p><strong>Password:</strong> {password}</p>
-    <p>We recommend changing your password as soon as you log in for the first time.</p>
-    <p>If you have any questions or need assistance, feel free to contact our support team.</p>
-    <p>Thank you for joining us!</p>
-</body>
-</html>
-"""
+@user_router.post("/send_registration_email/", tags=['Email students'])
+async def send_registration_email(email_data: EmailSchema, name: str,  password: str, background_tasks: BackgroundTasks):
+    """
+        Sends a registration email to a new user asynchronously.
+
+        This function creates a personalized registration email for the user with
+        their name and password, then sends the email in the background using FastMail.
+
+        Parameters:
+        ----------
+        email_data : EmailSchema
+            Contains the subject and recipient(s) for the email.
+        name : str
+            The name of the user to personalize the email content.
+
+        password : str
+            The password for the new user, to be included in the email content.
+        background_tasks : BackgroundTasks
+            Background task manager to handle sending the email asynchronously.
+
+        Returns:
+        -------
+        dict
+            A message indicating that the registration email was sent successfully.
+
+        Example:
+        --------
+        await send_registration_email(email_data, "John Doe", "johndoe", "mypassword", background_tasks)
+    """
+    email_content = template_register(name, password)
 
     message = MessageSchema(
         subject=email_data.subject,
@@ -91,6 +94,7 @@ async def send_registration_email(email_data: EmailSchema, name: str, user: str,
         body=email_content,
         subtype="html"
     )
+
     fm = FastMail(conf)
     background_tasks.add_task(fm.send_message, message)
     return {"message": "Registration email sent successfully"}
