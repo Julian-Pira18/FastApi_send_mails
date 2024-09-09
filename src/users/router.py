@@ -1,10 +1,19 @@
-from fastapi import BackgroundTasks
 from fastapi_mail import FastMail, MessageSchema
-
-from fastapi import APIRouter
-from src.users.schemas import EmailSchema
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from src.users.schemas import EmailSchema, Users
 from src.config.mail import conf
 from src.templates.register import template_password, template_register
+from sqlalchemy.orm import Session
+from src.config.database import get_db
+from src.models.course import Course
+from src.models.event import Event  # Importar el modelo Course
+from src.utils.generate_password import generate_password
+from pydantic import EmailStr
+from typing import List
+from src.models.users import User
+from src.models.course import Course
+from src.models.event import Event
+from src.models.assocaitions import user_course
 user_router = APIRouter()
 
 
@@ -23,12 +32,28 @@ async def send_email(email_data: EmailSchema, background_tasks: BackgroundTasks)
 
 
 @user_router.post("/send_mass_email/", tags=["Email students"])
-async def send_mass_email(email_data: EmailSchema, background_tasks: BackgroundTasks):
+async def send_mass_email(event_name: str, subject: str, content: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+
+    # "When initializing mapper Mapper[Event(event)], expression 'Course' failed to locate a name ('Course'). If this is a class name, consider adding this relationship() to the <class 'src.models.event.Event'> class after both dependent classes have been defined."
+    event = db.query(Event).filter(Event.name == event_name).first()
+
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+
+    course = db.query(Course).filter(Course.id == event.course_id).first()
+
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found")
+
+    users = db.query(User).join(user_course, user_course.c.user_id == User.id).filter(
+        user_course.c.course_id == course.id).all()
+
+    emails = [user.email for user in users]
 
     message = MessageSchema(
-        subject=email_data.subject,
-        recipients=email_data.email,
-        body=email_data.content,
+        subject=subject,
+        recipients=emails,
+        body=content,
         subtype="html"
     )
 
@@ -36,16 +61,45 @@ async def send_mass_email(email_data: EmailSchema, background_tasks: BackgroundT
     background_tasks.add_task(fm.send_message, message)
     return {"message": "Emails sent successfully"}
 
+# @user_router.post("/send_mass_email/", tags=["Email students"])
+# async def send_mass_email(event_name: str, subject: str, content: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
+
+#     event = db.query(Event).filter(Event.name == event_name).first()
+
+#     if not event:
+#         raise HTTPException(status_code=404, detail="Event not found")
+
+#     course = db.query(Course).filter(Course.id == event.course_id).first()
+
+#     if not course:
+#         raise HTTPException(status_code=404, detail="Course not found")
+
+#     users = db.query(User).join(user_course).filter(
+#         user_course.c.columns.course_id == course.id).all()
+
+#     emails = [user.email for user in users]
+
+#     message = MessageSchema(
+#         subject=subject,
+#         recipients=emails,
+#         body=content,
+#         subtype="html"
+#     )
+
+#     fm = FastMail(conf)
+#     background_tasks.add_task(fm.send_message, message)
+#     return {"message": "Emails sent successfully"}
+
 
 #  Password reset.
 @user_router.post("/send_password_reset/", tags=["Email students"])
-async def send_password_reset(email_data: EmailSchema, name: str, reset_link: str, background_tasks: BackgroundTasks):
-
-    email_content = template_password(name, reset_link)
+async def send_password_reset(email: List[EmailStr], background_tasks: BackgroundTasks):
+    reset_link = "LINK"
+    email_content = template_password(reset_link)
 
     message = MessageSchema(
-        subject=email_data.subject,
-        recipients=email_data.email,
+        subject="Reset Password",
+        recipients=email,
         body=email_content,
         subtype="html"
     )
@@ -58,7 +112,7 @@ async def send_password_reset(email_data: EmailSchema, name: str, reset_link: st
 
 
 @user_router.post("/send_registration_email/", tags=['Email students'])
-async def send_registration_email(email_data: EmailSchema, name: str,  password: str, background_tasks: BackgroundTasks):
+async def send_registration_email(user_data: Users, background_tasks: BackgroundTasks):
     """
         Sends a registration email to a new user asynchronously.
 
@@ -86,11 +140,14 @@ async def send_registration_email(email_data: EmailSchema, name: str,  password:
         --------
         await send_registration_email(email_data, "John Doe", "johndoe", "mypassword", background_tasks)
     """
-    email_content = template_register(name, password)
+
+    username = f"{user_data.name} {user_data.lastname}"
+    email_content = template_register(
+        username, generate_password(user_data.name, user_data.lastname))
 
     message = MessageSchema(
-        subject=email_data.subject,
-        recipients=email_data.email,
+        subject=f"Welcome {username}",
+        recipients=user_data.email,
         body=email_content,
         subtype="html"
     )

@@ -1,5 +1,11 @@
 from src.config.database import Base, engine
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
+from src.models.assocaitions import user_course
+from sqlalchemy.sql import func
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
 
 
 class Course(Base):
@@ -13,8 +19,19 @@ class Course(Base):
     is_public = Column(Boolean)
     rquirements = Column(String)
     max_amount_students = Column(Integer)
-    author_id = Column(Integer)
-    professor_id = Column(Integer)
-    created_at = Column(String)
 
-# Base.metadata.create_all(bind=engine)
+    author_id = Column(Integer, ForeignKey('users.id'))
+
+    professor_id = Column(Integer, ForeignKey('users.id'))
+    created_at = Column(DateTime, server_default=func.now())
+
+    author = relationship("User", foreign_keys=[
+        author_id], back_populates="authored_courses")
+    professor = relationship("User", foreign_keys=[
+        professor_id], back_populates="taught_courses")
+    events = relationship("Event", back_populates="course")
+    users = relationship("User", secondary=user_course,
+                         back_populates="courses")
+
+
+Base.metadata.create_all(bind=engine)

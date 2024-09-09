@@ -8,3 +8,9 @@ class EmailSchema(BaseModel):
     email: List[EmailStr]
     subject: str
     content: str
+
+
+class Users(BaseModel):
+    name: str
+    lastname: str
+    email: List[EmailStr]
