@@ -5,15 +5,14 @@ from src.config.mail import conf
 from src.templates.register import template_password, template_register
 from sqlalchemy.orm import Session
 from src.config.database import get_db
-from src.models.course import Course
-from src.models.event import Event  # Importar el modelo Course
+# Importar el modelo Course
 from src.utils.generate_password import generate_password
 from pydantic import EmailStr
 from typing import List
-from src.models.users import User
-from src.models.course import Course
-from src.models.event import Event
-from src.models.assocaitions import user_course
+from src.models import User
+from src.models import Course
+from src.models import Event as Event_model
+from src.models import user_course
 user_router = APIRouter()
 
 
@@ -30,13 +29,15 @@ async def send_email(email_data: EmailSchema, background_tasks: BackgroundTasks)
     background_tasks.add_task(fm.send_message, message)
     return {"message": "Email sent successfully"}
 
+#   "error": "Could not locate a bind configured on mapper Mapper[Event(event)], SQL expression or this Session."
+
 
 @user_router.post("/send_mass_email/", tags=["Email students"])
 async def send_mass_email(event_name: str, subject: str, content: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
 
-    # "When initializing mapper Mapper[Event(event)], expression 'Course' failed to locate a name ('Course'). If this is a class name, consider adding this relationship() to the <class 'src.models.event.Event'> class after both dependent classes have been defined."
-    event = db.query(Event).filter(Event.name == event_name).first()
-
+    event = db.query(Event_model).filter(
+        Event_model.name == event_name).first()
+    print(event)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
@@ -60,35 +61,6 @@ async def send_mass_email(event_name: str, subject: str, content: str, backgroun
     fm = FastMail(conf)
     background_tasks.add_task(fm.send_message, message)
     return {"message": "Emails sent successfully"}
-
-# @user_router.post("/send_mass_email/", tags=["Email students"])
-# async def send_mass_email(event_name: str, subject: str, content: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-
-#     event = db.query(Event).filter(Event.name == event_name).first()
-
-#     if not event:
-#         raise HTTPException(status_code=404, detail="Event not found")
-
-#     course = db.query(Course).filter(Course.id == event.course_id).first()
-
-#     if not course:
-#         raise HTTPException(status_code=404, detail="Course not found")
-
-#     users = db.query(User).join(user_course).filter(
-#         user_course.c.columns.course_id == course.id).all()
-
-#     emails = [user.email for user in users]
-
-#     message = MessageSchema(
-#         subject=subject,
-#         recipients=emails,
-#         body=content,
-#         subtype="html"
-#     )
-
-#     fm = FastMail(conf)
-#     background_tasks.add_task(fm.send_message, message)
-#     return {"message": "Emails sent successfully"}
 
 
 #  Password reset.
