@@ -5,15 +5,16 @@ from src.config.mail import conf
 from src.templates.register import template_password, template_register
 from sqlalchemy.orm import Session
 from src.config.database import get_db
-# Importar el modelo Course
 from src.utils.generate_password import generate_password
 from pydantic import EmailStr
 from typing import List
-from src.models import User
-from src.models import Course
-from src.models import Event as Event_model
-from src.models import user_course
+from src.models import *
 user_router = APIRouter()
+
+
+@user_router.get("/")
+async def hello():
+    return "Hello World"
 
 
 @user_router.post("/send_email/")
@@ -29,15 +30,13 @@ async def send_email(email_data: EmailSchema, background_tasks: BackgroundTasks)
     background_tasks.add_task(fm.send_message, message)
     return {"message": "Email sent successfully"}
 
-#   "error": "Could not locate a bind configured on mapper Mapper[Event(event)], SQL expression or this Session."
-
 
 @user_router.post("/send_mass_email/", tags=["Email students"])
 async def send_mass_email(event_name: str, subject: str, content: str, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
 
-    event = db.query(Event_model).filter(
-        Event_model.name == event_name).first()
-    print(event)
+    event = db.query(Event).filter(
+        Event.name == event_name).first()
+
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
 
@@ -79,8 +78,6 @@ async def send_password_reset(email: List[EmailStr], background_tasks: Backgroun
     fm = FastMail(conf)
     background_tasks.add_task(fm.send_message, message)
     return {"message": "Emails sent successfully"}
-
-# Resgiter of a new user.
 
 
 @user_router.post("/send_registration_email/", tags=['Email students'])

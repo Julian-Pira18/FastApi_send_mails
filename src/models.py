@@ -23,7 +23,6 @@ class User(Base):
     role_id = Column(String)
     created_at = Column(DateTime, server_default=func.now())
 
-    # Relaciones
     authored_courses = relationship(
         "Course", foreign_keys='Course.author_id', back_populates="author")
     taught_courses = relationship(
@@ -46,9 +45,6 @@ class Event(Base):
     course = relationship("Course", back_populates="events")
 
 
-# Tabla intermedia para la relación muchos a muchos entre 'User' y 'Course'
-
-
 class Course(Base):
 
     __tablename__ = "course"
@@ -58,7 +54,7 @@ class Course(Base):
     description = Column(String)
     photo_url = Column(String)
     is_public = Column(Boolean)
-    rquirements = Column(String)
+    requirements = Column(String)
     max_amount_students = Column(Integer)
 
     author_id = Column(Integer, ForeignKey('users.id'))
