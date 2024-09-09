@@ -14,7 +14,7 @@ user_course = Table('user_course', Base.metadata,
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String)
     lastname = Column(String)
     email = Column(String)

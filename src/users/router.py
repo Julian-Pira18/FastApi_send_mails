@@ -81,7 +81,7 @@ async def send_password_reset(email: List[EmailStr], background_tasks: Backgroun
 
 
 @user_router.post("/send_registration_email/", tags=['Email students'])
-async def send_registration_email(user_data: Users, background_tasks: BackgroundTasks):
+async def send_registration_email(user_data: Users, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """
         Sends a registration email to a new user asynchronously.
 
@@ -111,9 +111,15 @@ async def send_registration_email(user_data: Users, background_tasks: Background
     """
 
     username = f"{user_data.name} {user_data.lastname}"
+    password = generate_password(user_data.name, user_data.lastname)
     email_content = template_register(
-        username, generate_password(user_data.name, user_data.lastname))
+        username, password)
 
+    new_user = User(name=user_data.name,
+                    lastname=user_data.lastname, email=user_data.email, password=password, photo_url="x", role_id="student")
+
+    db.add(new_user)
+    db.commit()
     message = MessageSchema(
         subject=f"Welcome {username}",
         recipients=user_data.email,
