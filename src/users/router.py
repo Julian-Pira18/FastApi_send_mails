@@ -116,7 +116,7 @@ async def send_registration_email(user_data: Users, background_tasks: Background
         username, password)
 
     new_user = User(name=user_data.name,
-                    lastname=user_data.lastname, email=user_data.email, password=password, photo_url="x", role_id="student", courses=db.query(Course).all())
+                    lastname=user_data.lastname, email=user_data.email, password=password, photo_url="x", role_id="student")
 
     db.add(new_user)
     db.commit()
